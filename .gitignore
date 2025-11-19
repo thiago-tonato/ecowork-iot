@@ -138,7 +138,6 @@ ml/dataset/*
 !ml/dataset/.gitkeep
 
 # Arquivos de configuração sensíveis
-database/db_config.py
 *.env
 .env.local
 .env.*.local
