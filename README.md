@@ -74,14 +74,9 @@ cd api
 pip install -r requirements.txt
 ```
 
-4. Configure o banco de dados:
-   - Edite `database/db_config.py` com suas credenciais Oracle
-   - Execute o script `database/schema_oracle.sql` no seu banco de dados
-
-5. Execute a API:
+4. Execute a API (na raiz do projeto):
 ```bash
-cd api
-uvicorn main:app --reload
+uvicorn api.main:app --reload
 ```
 
 A API estará disponível em `http://localhost:8000`
@@ -186,18 +181,4 @@ python train.py
 ```
 
 O modelo treinado será salvo em `ml/saved_models/ecowork_mobilenet.h5`
-
-## 📝 Notas de Desenvolvimento
-
-- O sistema atual utiliza MobileNetV2 pré-treinado no ImageNet com mapeamento heurístico para classes EcoWork
-- Para produção, recomenda-se treinar um modelo customizado com dataset específico
-- As credenciais do banco de dados estão hardcoded em `db_config.py` - considere usar variáveis de ambiente para produção
-
-## 📄 Licença
-
-Este projeto foi desenvolvido para fins acadêmicos.
-
-## 👥 Contribuidores
-
-Projeto desenvolvido para FIAP.
 
