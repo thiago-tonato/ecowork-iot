@@ -1,184 +1,159 @@
-# EcoWork IoT - Sistema de Reconhecimento de Ações Sustentáveis
+# 📘 EcoWork – API de Visão Computacional (Simulada)
+> **FIAP – Projeto Integrado | Deep Learning + DevOps + Banco de Dados**
 
-Sistema de visão computacional que utiliza inteligência artificial para reconhecer e pontuar ações sustentáveis através de análise de imagens.
+## 📝 Descrição do Projeto
+O **EcoWork** é uma solução de sustentabilidade corporativa que permite que funcionários registrem ações sustentáveis por meio de fotos enviadas à API.
 
-## 📋 Sobre o Projeto
+A API:
+1. Recebe a imagem  
+2. Executa uma análise de “visão computacional simulada”  
+3. Classifica a ação como sustentável ou não  
+4. Calcula um **ecoScore**  
+5. Gera **pontos verdes**  
+6. Registra tudo no **Banco Oracle Cloud**  
+7. Permite consultar o histórico  
 
-O EcoWork IoT é uma solução que combina visão computacional e machine learning para identificar ações sustentáveis em imagens, atribuindo pontuações e scores ecológicos aos usuários. O sistema reconhece diferentes categorias de ações sustentáveis como uso de bicicletas, transporte público, caronas, uso de materiais reutilizáveis, entre outras.
+## 🚫 Sobre a IA Simulada
+O ambiente local impediu o download do modelo via HTTPS (erro de certificado SSL).  
+Portanto, a IA foi simulada, mantendo toda a arquitetura Deep Learning-ready.
 
-## 🏗️ Arquitetura
+No vídeo, deverá ser dito:
 
-O projeto está organizado nas seguintes estruturas:
+> “A arquitetura está preparada para modelos reais, mas o ambiente bloqueou o download do modelo. Por isso, utilizamos IA simulada para demonstração.”
 
+## 🧱 Arquitetura da Solução
 ```
-ecowork-iot/
-├── api/                 # API FastAPI com endpoints de inferência
-│   ├── main.py         # Endpoints principais da API
-│   ├── inference.py    # Lógica de inferência e processamento de imagens
-│   ├── models.py       # Modelos Pydantic para validação
-│   └── requirements.txt # Dependências Python
-├── database/            # Configuração e schema do banco de dados
-│   ├── db_config.py    # Configuração de conexão Oracle
-│   └── schema_oracle.sql # Schema do banco de dados
-├── ml/                  # Modelos e treinamento
-│   ├── train.py        # Script de treinamento do modelo
-│   ├── dataset/        # Dataset de imagens para treinamento
-│   └── saved_models/   # Modelos treinados salvos
-└── devops/              # Configurações de deployment
-    └── Dockerfile      # Containerização da aplicação
+Usuário → Swagger → API → IA Simulada → ecoScore → Oracle → Histórico
 ```
 
-## 🚀 Funcionalidades
+## 🧰 Tecnologias
+- Python
+- FastAPI
+- Uvicorn
+- Pillow
+- Oracle Database
+- Mock AI
+- Docker (opcional)
 
-- **EcoScan**: Endpoint que recebe imagens e identifica ações sustentáveis
-- **Sistema de Pontuação**: Atribui scores ecológicos e pontos verdes baseados nas ações identificadas
-- **Histórico de Usuário**: Consulta de histórico de ações sustentáveis por usuário
-- **Health Check**: Endpoint para verificar status do modelo e conexão com banco de dados
-
-## 🛠️ Tecnologias Utilizadas
-
-- **FastAPI**: Framework web para construção da API
-- **TensorFlow/Keras**: Framework de deep learning
-- **MobileNetV2**: Modelo pré-treinado para classificação de imagens
-- **Oracle Database**: Banco de dados para armazenamento de ações e usuários
-- **PIL/Pillow**: Processamento de imagens
-- **Docker**: Containerização da aplicação
-
-## 📦 Instalação
-
-### Pré-requisitos
-
-- Python 3.10+
-- Oracle Database (ou Oracle Cloud Autonomous Database)
-- Docker (opcional, para containerização)
-
-### Configuração Local
-
-1. Clone o repositório:
-```bash
-git clone <url-do-repositorio>
-cd ecowork-iot
+## 📂 Estrutura
+```
+ecowork/
+│ api/
+│   main.py
+│   inference.py
+│   models.py
+│ database/
+│   db_config.py
+│   db_init.py
+│ requirements.txt
+│ README.md
 ```
 
-2. Crie um ambiente virtual:
-```bash
+## ⚙️ Instalação
+
+### 1️⃣ Criar ambiente virtual
+```
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate  # Windows
 ```
 
-3. Instale as dependências:
-```bash
-cd api
+Ativar:
+
+Windows:
+```
+venv\Scripts\activate
+```
+
+Linux/Mac:
+```
+source venv/bin/activate
+```
+
+### 2️⃣ Instalar dependências
+```
 pip install -r requirements.txt
 ```
 
-4. Execute a API (na raiz do projeto):
-```bash
+### 3️⃣ Configurar Oracle
+Editar:
+```
+database/db_config.py
+```
+
+### 4️⃣ Rodar API
+```
 uvicorn api.main:app --reload
 ```
 
-A API estará disponível em `http://localhost:8000`
-
-### Documentação da API
-
-Após iniciar a API, acesse:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
-## 🐳 Docker
-
-Para executar com Docker:
-
-1. Construa a imagem:
-```bash
-docker build -t ecowork-iot -f devops/Dockerfile .
+Acessar:
+```
+http://127.0.0.1:8000/docs
 ```
 
-2. Execute o container:
-```bash
-docker run -p 8000:8000 \
-  -e ORACLE_USER=seu_usuario \
-  -e ORACLE_PASSWORD=sua_senha \
-  -e ORACLE_DSN=seu_dsn \
-  ecowork-iot
+## 🧪 Testes
+
+### 🔹 Healthcheck
+```
+GET /api/v1/health
 ```
 
-## 📡 Endpoints da API
-
-### POST `/api/v1/ecoscan`
-Analisa uma imagem e identifica ações sustentáveis.
-
-**Parâmetros:**
-- `image`: Arquivo de imagem (multipart/form-data)
-- `user_id`: ID do usuário (form data)
-
-**Resposta:**
-```json
-{
-  "user_id": "string",
-  "classe_predita": "string",
-  "probabilidade": 0.0,
-  "ecoScore": 0,
-  "pontos_verdes": 0,
-  "mensagem": "string",
-  "registro_id": 0
-}
-```
-
-### GET `/api/v1/health`
-Verifica o status da API, modelo e conexão com banco de dados.
-
-**Resposta:**
+Resposta:
 ```json
 {
   "status": "ok",
   "model_loaded": true,
-  "model_name": "string",
+  "model_name": "EcoWork Simulated Vision Model",
   "database_connection": "ok"
 }
 ```
 
-### GET `/api/v1/users/{user_id}/historico`
-Retorna o histórico de ações sustentáveis de um usuário.
+### 🔹 IA Simulada
+```
+POST /api/v1/ecoscan
+```
 
-**Resposta:**
+Exemplo de resposta:
 ```json
 {
-  "user_id": "string",
+  "user_id": "luciana",
+  "classe_predita": "bike",
+  "probabilidade": 0.9,
+  "ecoScore": 81,
+  "pontos_verdes": 48,
+  "mensagem": "Ação reconhecida: bike.",
+  "registro_id": 1
+}
+```
+
+### 🔹 Histórico
+```
+GET /api/v1/users/luciana/historico
+```
+
+Exemplo:
+```json
+{
+  "user_id": "luciana",
   "historico": [
     {
-      "data_hora": "string",
-      "classe": "string",
-      "ecoScore": 0,
-      "pontos": 0
+      "data_hora": "2025-01-10T14:22:33.223223",
+      "classe": "bike",
+      "ecoScore": 81,
+      "pontos": 48
     }
   ]
 }
 ```
 
-## 🎯 Classes Reconhecidas
+## 🤖 IA Simulada — Texto para Vídeo
+> "A arquitetura foi construída para usar modelos reais, mas restrições de rede impediram o download. Por isso usamos uma IA simulada para fins de apresentação."
 
-O sistema reconhece as seguintes classes de ações sustentáveis:
-
-- `bike`: Uso de bicicleta
-- `transporte_publico`: Uso de transporte público
-- `carona`: Compartilhamento de carona
-- `reutilizavel`: Uso de materiais reutilizáveis
-- `economia_energia`: Ações de economia de energia
-- `nao_sustentavel`: Ações não sustentáveis
-
-## 🤖 Treinamento do Modelo
-
-Para treinar um modelo customizado:
-
-1. Organize seu dataset em `ml/dataset/` com subpastas por classe
-2. Execute o script de treinamento:
-```bash
-cd ml
-python train.py
+## 🛠 Troubleshooting
+- **SSL Error:** usar IA simulada  
+- **int() error:** limpar tabela  
+```
+DELETE FROM ECO_ACTIONS;
+COMMIT;
 ```
 
-O modelo treinado será salvo em `ml/saved_models/ecowork_mobilenet.h5`
-
+## 🎉 Fim
+Projeto pronto para entrega!

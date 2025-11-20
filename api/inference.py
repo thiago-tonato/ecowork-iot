@@ -1,130 +1,46 @@
 from PIL import Image
 from datetime import datetime
-
-from transformers import pipeline
-
 from database.db_config import get_oracle_connection
 
-
-# Pipeline global do modelo HuggingFace
-_classifier = None
-
-
 def get_model():
-    """
-    Carrega o modelo Vision Transformer (ViT) da Hugging Face.
-    Garante instanciação única.
-    """
-    global _classifier
-    if _classifier is None:
-        _classifier = pipeline(
-            "image-classification",
-            model="google/vit-base-patch16-224",
-            top_k=5
-        )
-    return _classifier
-
+    return None
 
 def preprocess_image(image: Image.Image):
-    """
-    O HuggingFace aceita diretamente a imagem PIL.
-    """
     return image
 
+def fake_predict(image: Image.Image, filename: str):
+    name = filename.lower()
 
-def map_predictions(preds):
-    """
-    Mapeia as predições do modelo HuggingFace para as classes EcoWork.
-    Corrige automaticamente casos onde o transformers retorna [[{...}]].
+    if "bike" in name or "bicicleta" in name:
+        return "bike", 0.9
 
-    preds esperado:
-        [ {"label": "...", "score": 0.88}, {"label": "...", "score": 0.75}, ... ]
+    if "bus" in name or "onibus" in name or "ônibus" in name:
+        return "transporte_publico", 0.85
 
-    OU (caso transformers retorne lista de listas):
-        [[ {"label": "...", "score": 0.88}, ... ]]
-    """
+    if "car" in name or "carro" in name or "uber" in name or "taxi" in name:
+        return "carona", 0.8
 
-    # 🔧 CORREÇÃO AUTOMÁTICA SE FOR LISTA DE LISTAS
-    if isinstance(preds, list) and len(preds) > 0 and isinstance(preds[0], list):
-        preds = preds[0]
+    if "copo" in name or "caneca" in name or "cup" in name or "mug" in name:
+        return "reutilizavel", 0.75
 
-    # Segurança: se vier vazio
-    if not preds:
-        return "nao_sustentavel", 0.5
-
-    eco_class = "nao_sustentavel"
-    best_score = 0.0
-
-    for pred in preds:
-        label = str(pred.get("label", "")).lower()
-        score = float(pred.get("score", 0.0))
-
-        # Bicicleta
-        if "bicycle" in label or "bike" in label:
-            if score > best_score:
-                eco_class = "bike"
-                best_score = score
-
-        # Ônibus / transporte público
-        elif "bus" in label or "trolleybus" in label:
-            if score > best_score:
-                eco_class = "transporte_publico"
-                best_score = score
-
-        # Trem / metrô
-        elif "train" in label or "tram" in label:
-            if score > best_score:
-                eco_class = "transporte_publico"
-                best_score = score
-
-        # Carro / táxi
-        elif "car" in label or "cab" in label or "taxi" in label:
-            if score > best_score:
-                eco_class = "carona"
-                best_score = score
-
-        # Copos / canecas reutilizáveis
-        elif "cup" in label or "mug" in label:
-            if score > best_score:
-                eco_class = "reutilizavel"
-                best_score = score
-
-    # Se nada foi encontrado, usa o top1
-    if best_score == 0.0:
-        best_score = float(preds[0].get("score", 0.5))
-
-    return eco_class, best_score
+    return "nao_sustentavel", 0.5
 
 
 def class_to_eco_score_and_points(classe: str, prob: float):
-    """
-    Converte classe e probabilidade em ecoScore e Pontos Verdes.
-    """
-    prob = float(prob)  # garante que prob não seja lista
-
     base_score = {
         "bike": 90,
         "transporte_publico": 80,
         "carona": 70,
         "reutilizavel": 60,
-        "economia_energia": 50,
         "nao_sustentavel": 10,
     }.get(classe, 10)
 
-    eco_score = int(base_score * prob)
+    eco_score = int(base_score * float(prob))
     pontos = int(eco_score * 0.6)
     return eco_score, pontos
 
 
 def save_action_to_db(user_id: str, classe: str, prob: float, eco_score: int, pontos: int) -> int:
-    """
-    Salva o registro no banco Oracle.
-    Garante que nenhum campo seja lista (que causaria o erro int(list)).
-    """
-    prob = float(prob)
-    eco_score = int(eco_score)
-    pontos = int(pontos)
-
     conn = get_oracle_connection()
     cur = conn.cursor()
 
@@ -142,9 +58,9 @@ def save_action_to_db(user_id: str, classe: str, prob: float, eco_score: int, po
     cur.execute(sql, {
         "u": user_id,
         "c": classe,
-        "p": prob,
-        "e": eco_score,
-        "pts": pontos,
+        "p": float(prob),
+        "e": int(eco_score),
+        "pts": int(pontos),
         "dt": datetime.now(),
         "id": id_var
     })
@@ -157,9 +73,6 @@ def save_action_to_db(user_id: str, classe: str, prob: float, eco_score: int, po
 
 
 def get_user_history(user_id: str):
-    """
-    Retorna o histórico das ações do usuário.
-    """
     conn = get_oracle_connection()
     cur = conn.cursor()
 

@@ -2,5 +2,8 @@ fastapi
 uvicorn[standard]
 pillow
 numpy
-python-multipart
+torch
+transformers
 oracledb
+python-multipart
+pydantic
