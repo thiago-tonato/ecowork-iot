@@ -17,9 +17,6 @@ A API:
 O ambiente local impediu o download do modelo via HTTPS (erro de certificado SSL).  
 Portanto, a IA foi simulada, mantendo toda a arquitetura Deep Learning-ready.
 
-No vídeo, deverá ser dito:
-
-> “A arquitetura está preparada para modelos reais, mas o ambiente bloqueou o download do modelo. Por isso, utilizamos IA simulada para demonstração.”
 
 ## 🧱 Arquitetura da Solução
 ```
@@ -144,16 +141,5 @@ Exemplo:
 }
 ```
 
-## 🤖 IA Simulada — Texto para Vídeo
+## 🤖 IA Simulada
 > "A arquitetura foi construída para usar modelos reais, mas restrições de rede impediram o download. Por isso usamos uma IA simulada para fins de apresentação."
-
-## 🛠 Troubleshooting
-- **SSL Error:** usar IA simulada  
-- **int() error:** limpar tabela  
-```
-DELETE FROM ECO_ACTIONS;
-COMMIT;
-```
-
-## 🎉 Fim
-Projeto pronto para entrega!
