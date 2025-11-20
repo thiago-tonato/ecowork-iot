@@ -15,45 +15,52 @@ from .inference import (
 from database.db_init import init_database
 from database.db_config import test_connection
 
-# Inicializa as tabelas no banco quando a API sobe
+# ------------------------------------------------------------------------------------
+# Inicializa tabelas ao subir a API
+# ------------------------------------------------------------------------------------
 init_database()
 
+# ------------------------------------------------------------------------------------
+# Configuração da API
+# ------------------------------------------------------------------------------------
 app = FastAPI(title="EcoWork IA - API de Visão Computacional")
 
-# Middleware CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # pode ajustar depois
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
+# ------------------------------------------------------------------------------------
+# ENDPOINT: IA - /api/v1/ecoscan
+# ------------------------------------------------------------------------------------
 @app.post("/api/v1/ecoscan", response_model=EcoScanResponse)
 async def ecoscan(
     image: UploadFile = File(...),
     user_id: str = Form(...)
 ):
     """
-    Endpoint principal da IA.
-    Recebe uma imagem, roda a classificação e salva o resultado no Oracle.
+    Recebe uma imagem, executa classificação com HuggingFace ViT e grava no Oracle.
     """
+
     try:
+        # Lê a imagem enviada
         contents = await image.read()
         img = Image.open(io.BytesIO(contents))
 
-        # Carrega modelo e pré-processa a imagem
+        # Carrega o modelo e pré-processa
         model = get_model()
         img_proc = preprocess_image(img)
 
-        # Predição com transformers
+        # Predição (HuggingFace)
         preds = model(img_proc)
 
-        # Converte predições para categoria EcoWork
+        # Converte predições para uma classe EcoWork
         classe_predita, prob = map_predictions(preds)
 
-        # Calcula ecoScore e pontos
+        # Calcula ecoScore e pontos verdes
         eco_score, pontos = class_to_eco_score_and_points(classe_predita, prob)
 
         # Salva no Oracle
@@ -63,7 +70,7 @@ async def ecoscan(
 
         mensagem = f"Ação sustentável reconhecida: {classe_predita}."
 
-        # Resposta JSON
+        # Retorna JSON
         return EcoScanResponse(
             user_id=user_id,
             classe_predita=classe_predita,
@@ -78,10 +85,15 @@ async def ecoscan(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ------------------------------------------------------------------------------------
+# ENDPOINT: Healthcheck - /api/v1/health
+# ------------------------------------------------------------------------------------
 @app.get("/api/v1/health", response_model=HealthResponse)
 def health():
     """
-    Verifica se o modelo foi carregado e se há conexão com o banco Oracle.
+    Verifica:
+    - Carregamento do modelo HuggingFace
+    - Conexão com o banco Oracle
     """
     try:
         _ = get_model()
@@ -91,21 +103,27 @@ def health():
         model_loaded = False
         model_name = "erro"
 
-    db_status = "ok" if test_connection() else "error"
+    database_status = "ok" if test_connection() else "error"
+
+    api_status = "ok" if (model_loaded and database_status == "ok") else "error"
 
     return HealthResponse(
-        status="ok" if (model_loaded and db_status == "ok") else "error",
+        status=api_status,
         model_loaded=model_loaded,
         model_name=model_name,
-        database_connection=db_status,
+        database_connection=database_status,
     )
 
 
+# ------------------------------------------------------------------------------------
+# ENDPOINT: Histórico - /api/v1/users/{user_id}/historico
+# ------------------------------------------------------------------------------------
 @app.get("/api/v1/users/{user_id}/historico", response_model=HistoricoResponse)
 def historico(user_id: str):
     """
-    Retorna o histórico de ações sustentáveis registradas para o usuário.
+    Lista todas as ações sustentáveis registradas no banco Oracle para um usuário.
     """
+
     try:
         rows = get_user_history(user_id)
 
@@ -114,7 +132,7 @@ def historico(user_id: str):
                 data_hora=r[0].isoformat(),
                 classe=r[1],
                 ecoScore=int(r[2]),
-                pontos=int(r[3])
+                pontos=int(r[3]),
             )
             for r in rows
         ]

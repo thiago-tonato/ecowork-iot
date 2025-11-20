@@ -5,14 +5,15 @@ from transformers import pipeline
 
 from database.db_config import get_oracle_connection
 
-# Pipeline global de classificação de imagens
+
+# Pipeline global do modelo HuggingFace
 _classifier = None
 
 
 def get_model():
     """
-    Carrega o modelo pré-treinado da Hugging Face (Vision Transformer - ViT).
-    O pipeline baixa automaticamente o modelo na primeira execução.
+    Carrega o modelo Vision Transformer (ViT) da Hugging Face.
+    Garante instanciação única.
     """
     global _classifier
     if _classifier is None:
@@ -26,27 +27,37 @@ def get_model():
 
 def preprocess_image(image: Image.Image):
     """
-    Para o modelo Vision Transformer da Hugging Face, a imagem PIL já é suficiente.
+    O HuggingFace aceita diretamente a imagem PIL.
     """
     return image
 
 
 def map_predictions(preds):
     """
-    Recebe as predições do modelo e converte para as classes do EcoWork.
-    preds = [
-       {"label": "bicycle-built-for-two", "score": 0.88},
-       {"label": "mountain bike", "score": 0.76},
-       ...
-    ]
+    Mapeia as predições do modelo HuggingFace para as classes EcoWork.
+    Corrige automaticamente casos onde o transformers retorna [[{...}]].
+
+    preds esperado:
+        [ {"label": "...", "score": 0.88}, {"label": "...", "score": 0.75}, ... ]
+
+    OU (caso transformers retorne lista de listas):
+        [[ {"label": "...", "score": 0.88}, ... ]]
     """
+
+    # 🔧 CORREÇÃO AUTOMÁTICA SE FOR LISTA DE LISTAS
+    if isinstance(preds, list) and len(preds) > 0 and isinstance(preds[0], list):
+        preds = preds[0]
+
+    # Segurança: se vier vazio
+    if not preds:
+        return "nao_sustentavel", 0.5
 
     eco_class = "nao_sustentavel"
     best_score = 0.0
 
     for pred in preds:
-        label = pred["label"].lower()
-        score = pred["score"]
+        label = str(pred.get("label", "")).lower()
+        score = float(pred.get("score", 0.0))
 
         # Bicicleta
         if "bicycle" in label or "bike" in label:
@@ -60,7 +71,7 @@ def map_predictions(preds):
                 eco_class = "transporte_publico"
                 best_score = score
 
-        # Trem / metrô / tram
+        # Trem / metrô
         elif "train" in label or "tram" in label:
             if score > best_score:
                 eco_class = "transporte_publico"
@@ -72,20 +83,25 @@ def map_predictions(preds):
                 eco_class = "carona"
                 best_score = score
 
-        # Copo / caneca reutilizável
+        # Copos / canecas reutilizáveis
         elif "cup" in label or "mug" in label:
             if score > best_score:
                 eco_class = "reutilizavel"
                 best_score = score
 
-    # Se nada bater, usa a probabilidade do top1 como fallback
-    if best_score == 0.0 and preds:
-        best_score = preds[0]["score"]
+    # Se nada foi encontrado, usa o top1
+    if best_score == 0.0:
+        best_score = float(preds[0].get("score", 0.5))
 
     return eco_class, best_score
 
 
 def class_to_eco_score_and_points(classe: str, prob: float):
+    """
+    Converte classe e probabilidade em ecoScore e Pontos Verdes.
+    """
+    prob = float(prob)  # garante que prob não seja lista
+
     base_score = {
         "bike": 90,
         "transporte_publico": 80,
@@ -101,6 +117,14 @@ def class_to_eco_score_and_points(classe: str, prob: float):
 
 
 def save_action_to_db(user_id: str, classe: str, prob: float, eco_score: int, pontos: int) -> int:
+    """
+    Salva o registro no banco Oracle.
+    Garante que nenhum campo seja lista (que causaria o erro int(list)).
+    """
+    prob = float(prob)
+    eco_score = int(eco_score)
+    pontos = int(pontos)
+
     conn = get_oracle_connection()
     cur = conn.cursor()
 
@@ -133,6 +157,9 @@ def save_action_to_db(user_id: str, classe: str, prob: float, eco_score: int, po
 
 
 def get_user_history(user_id: str):
+    """
+    Retorna o histórico das ações do usuário.
+    """
     conn = get_oracle_connection()
     cur = conn.cursor()
 
