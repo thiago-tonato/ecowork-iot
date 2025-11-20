@@ -1,16 +1,19 @@
-import os
 from PIL import Image
-import numpy as np
+from datetime import datetime
 
 from transformers import pipeline
 
 from database.db_config import get_oracle_connection
-from datetime import datetime
 
-# Carrega pipeline de classificação de imagens
+# Pipeline global de classificação de imagens
 _classifier = None
 
+
 def get_model():
+    """
+    Carrega o modelo pré-treinado da Hugging Face (Vision Transformer - ViT).
+    O pipeline baixa automaticamente o modelo na primeira execução.
+    """
     global _classifier
     if _classifier is None:
         _classifier = pipeline(
@@ -23,17 +26,21 @@ def get_model():
 
 def preprocess_image(image: Image.Image):
     """
-    O pipeline da HuggingFace já cuida do preprocessamento,
-    então basta retornar a imagem original.
+    Para o modelo Vision Transformer da Hugging Face, a imagem PIL já é suficiente.
     """
     return image
 
 
 def map_predictions(preds):
     """
-    preds = lista de dicionários, ex:
-    [{'label': 'bicycle', 'score': 0.88}, ...]
+    Recebe as predições do modelo e converte para as classes do EcoWork.
+    preds = [
+       {"label": "bicycle-built-for-two", "score": 0.88},
+       {"label": "mountain bike", "score": 0.76},
+       ...
+    ]
     """
+
     eco_class = "nao_sustentavel"
     best_score = 0.0
 
@@ -41,39 +48,44 @@ def map_predictions(preds):
         label = pred["label"].lower()
         score = pred["score"]
 
+        # Bicicleta
         if "bicycle" in label or "bike" in label:
             if score > best_score:
                 eco_class = "bike"
                 best_score = score
 
+        # Ônibus / transporte público
         elif "bus" in label or "trolleybus" in label:
             if score > best_score:
                 eco_class = "transporte_publico"
                 best_score = score
 
+        # Trem / metrô / tram
         elif "train" in label or "tram" in label:
             if score > best_score:
                 eco_class = "transporte_publico"
                 best_score = score
 
+        # Carro / táxi
         elif "car" in label or "cab" in label or "taxi" in label:
             if score > best_score:
                 eco_class = "carona"
                 best_score = score
 
+        # Copo / caneca reutilizável
         elif "cup" in label or "mug" in label:
             if score > best_score:
                 eco_class = "reutilizavel"
                 best_score = score
 
-    # Se nada bateu, usa a score do top1
-    if best_score == 0.0:
+    # Se nada bater, usa a probabilidade do top1 como fallback
+    if best_score == 0.0 and preds:
         best_score = preds[0]["score"]
 
     return eco_class, best_score
 
 
-def class_to_eco_score_and_points(classe, prob):
+def class_to_eco_score_and_points(classe: str, prob: float):
     base_score = {
         "bike": 90,
         "transporte_publico": 80,
@@ -85,11 +97,10 @@ def class_to_eco_score_and_points(classe, prob):
 
     eco_score = int(base_score * prob)
     pontos = int(eco_score * 0.6)
-
     return eco_score, pontos
 
 
-def save_action_to_db(user_id, classe, prob, eco_score, pontos):
+def save_action_to_db(user_id: str, classe: str, prob: float, eco_score: int, pontos: int) -> int:
     conn = get_oracle_connection()
     cur = conn.cursor()
 
@@ -121,7 +132,7 @@ def save_action_to_db(user_id, classe, prob, eco_score, pontos):
     return int(id_var.getvalue())
 
 
-def get_user_history(user_id):
+def get_user_history(user_id: str):
     conn = get_oracle_connection()
     cur = conn.cursor()
 
