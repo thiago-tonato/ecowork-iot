@@ -3,4 +3,3 @@ uvicorn[standard]
 pillow
 numpy
 python-multipart
-oracledb
