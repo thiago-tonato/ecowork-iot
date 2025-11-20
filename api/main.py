@@ -120,12 +120,11 @@ def health():
 # ------------------------------------------------------------------------------------
 @app.get("/api/v1/users/{user_id}/historico", response_model=HistoricoResponse)
 def historico(user_id: str):
-    """
-    Lista todas as ações sustentáveis registradas no banco Oracle para um usuário.
-    """
-
     try:
         rows = get_user_history(user_id)
+
+        # DEBUG OBRIGATÓRIO
+        print("DEBUG ROWS FROM ORACLE:", rows)
 
         historico_items = [
             HistoricoItem(
