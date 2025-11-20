@@ -143,6 +143,3 @@ Exemplo:
 
 ## 🤖 IA Simulada
 > "A arquitetura foi construída para usar modelos reais, mas restrições de rede impediram o download. Por isso usamos uma IA simulada para fins de apresentação."
-
-## 🎉 Fim
-Projeto pronto para entrega!
